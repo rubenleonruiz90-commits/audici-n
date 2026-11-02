@@ -1,0 +1,1 @@
+{"name":"Clara Escucha","short_name":"Clara Escucha","description":"Amplifica el sonido de tu entorno y de la tele con auriculares.","start_url":"./index.html","display":"standalone","orientation":"portrait","background_color":"#1d4ed8","theme_color":"#1d4ed8","lang":"es","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}

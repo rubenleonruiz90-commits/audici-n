@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d4ed8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Clara Escucha</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--fg:#111827;--mute:#4b5563;--line:#d1d5db;--blue:#1d4ed8;--green:#15803d;--red:#b91c1c;--warn:#fde68a}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1020;--card:#161d33;--fg:#f3f4f6;--mute:#b6bdcc;--line:#2c3556;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--warn:#5b4a0b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:20px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto;display:grid;gap:20px}
+h1{font-size:1.7rem;margin:.2em 0 0}h2{font-size:1.2rem;margin:0 0 10px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:18px}
+button{font:inherit;cursor:pointer;border:0;border-radius:18px;color:#fff;min-height:56px}
+button:focus-visible,input:focus-visible{outline:4px solid #f59e0b;outline-offset:2px}
+#main{width:100%;padding:28px;font-size:2rem;font-weight:800;background:var(--green)}
+#main.on{background:var(--red)}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.modes button{background:var(--card);color:var(--fg);border:2px solid var(--line);padding:14px 6px;font-weight:700}
+.modes button[aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.modes span{display:block;font-size:1.8rem}
+.row{display:flex;align-items:center;gap:12px}
+.row button{width:56px;background:var(--blue);font-size:1.8rem;font-weight:800}
+input[type=range]{flex:1;height:44px}
+.meter{height:18px;background:var(--line);border-radius:9px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--green);transition:width .08s}
+.warn{background:var(--warn);border-radius:14px;padding:14px;font-weight:600}
+.mute{color:var(--mute);font-size:.9rem}
+.btn2{width:100%;background:var(--blue);padding:16px;font-weight:700}
+.hidden{display:none!important}
+label.chk{display:flex;gap:12px;align-items:flex-start}label.chk input{width:28px;height:28px;flex:none}
+#test .big{font-size:2.6rem;font-weight:800;text-align:center}
+#heard{width:100%;background:var(--green);font-size:2rem;font-weight:800;padding:34px}
+</style>
+</head>
+<body>
+<main id="app">
+<h1>🦻 Clara Escucha</h1>
+
+<div id="err" class="warn hidden" role="alert"></div>
+
+<section class="card" id="setup">
+<h2>Antes de empezar</h2>
+<label class="chk"><input type="checkbox" id="hp"> <span>Me he puesto <b>auriculares</b>. Sin ellos se oiría un pitido.</span></label>
+<p class="mute">Mejor con cable o con auriculares de baja latencia. Mantén esta pantalla abierta y encendida.</p>
+</section>
+
+<button id="main" aria-label="Empezar a escuchar">ESCUCHAR</button>
+<div class="meter hidden" id="meterBox" aria-hidden="true"><i id="meter"></i></div>
+
+<section class="card">
+<h2>¿Qué quieres escuchar?</h2>
+<div class="modes" id="modes"></div>
+<p class="mute" id="modeHelp"></p>
+</section>
+
+<section class="card">
+<h2>Volumen extra: <span id="volTxt"></span></h2>
+<div class="row">
+<button id="vm" aria-label="Bajar volumen">−</button>
+<input type="range" id="vol" min="0" max="20" step="1" aria-label="Volumen extra">
+<button id="vp" aria-label="Subir volumen">+</button>
+</div>
+<p class="mute">Sube poco a poco. Un volumen excesivo puede dañar el oído.</p>
+</section>
+
+<button class="btn2" id="startTest">👂 Hacer test de audición</button>
+<button class="btn2 hidden" id="install" style="background:var(--mute)">📲 Instalar en este dispositivo</button>
+
+<p class="mute" style="text-align:center">Ayuda de escucha personal. No es un producto sanitario ni sustituye a un audífono prescrito. El audio se procesa en tu dispositivo y no se envía a ningún sitio.</p>
+</main>
+
+<section id="test" class="hidden" style="max-width:640px;margin:0 auto;display:none;gap:20px">
+<h1>Test de audición</h1>
+<div id="testIntro" class="card">
+<p>Ponte los auriculares que vas a usar, en un sitio tranquilo, con el volumen del dispositivo a la mitad.</p>
+<p>Oirás un sonido que empieza muy flojo y sube poco a poco. Pulsa el botón verde en cuanto lo oigas.</p>
+<button class="btn2" id="beginTest">Empezar</button>
+<p class="mute">Es una estimación orientativa, no un diagnóstico. Si notas pérdida de audición, consulta a un audioprotesista o a tu médico.</p>
+</div>
+<div id="testRun" class="hidden" style="display:none;gap:20px">
+<div class="card"><p id="testStep" class="mute" style="text-align:center"></p><p class="big" id="testHz"></p>
+<div class="meter"><i id="testBar"></i></div></div>
+<button id="heard">¡LO OIGO!</button>
+</div>
+<div id="testDone" class="card hidden"><h2>✅ Perfil guardado</h2><p>Ya se aplica automáticamente al amplificador.</p></div>
+<button class="btn2" id="backTest" style="background:var(--mute)">Volver</button>
+</section>
+
+<script>
+"use strict";
+const BANDS=[250,500,1000,2000,4000,8000];
+const MODES={
+ conversacion:{n:"Conversación",i:"👥",o:[0,0,2,3,3,0],h:"Realza la voz de quien tienes delante."},
+ tele:{n:"Tele",i:"📺",o:[-4,-2,2,5,5,0],h:"Realza las voces y suaviza música y graves. Acerca el dispositivo a la tele."},
+ calle:{n:"Calle",i:"🚶",o:[-6,-3,0,2,2,0],h:"Reduce graves (tráfico, viento) y realza el habla."}
+};
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+let mode=store.get("mode","conversacion"), vol=store.get("vol",6), profile=store.get("profile",[0,0,0,0,0,0]);
+let ctx,stream,src,filters=[],pre,comp,limiter,out,analyser,raf,running=false;
+
+function showErr(m){const e=$("err");e.textContent=m;e.classList.toggle("hidden",!m)}
+function dbToGain(d){return Math.pow(10,d/20)}
+
+/* ---------- UI ---------- */
+function drawModes(){
+ $("modes").innerHTML="";
+ for(const k in MODES){const b=document.createElement("button");b.innerHTML=`<span>${MODES[k].i}</span>${MODES[k].n}`;
+  b.setAttribute("aria-pressed",k===mode);b.onclick=()=>{mode=k;store.set("mode",k);drawModes();apply()};$("modes").appendChild(b)}
+ $("modeHelp").textContent=MODES[mode].h;
+}
+function drawVol(){$("vol").value=vol;$("volTxt").textContent="+"+vol+" dB"}
+$("vol").oninput=e=>{vol=+e.target.value;store.set("vol",vol);drawVol();apply()};
+$("vm").onclick=()=>{vol=Math.max(0,vol-2);store.set("vol",vol);drawVol();apply()};
+$("vp").onclick=()=>{vol=Math.min(20,vol+2);store.set("vol",vol);drawVol();apply()};
+
+/* ---------- Audio ---------- */
+function apply(){
+ if(!filters.length)return;
+ filters.forEach((f,i)=>{f.gain.value=Math.max(-12,Math.min(18,profile[i]+MODES[mode].o[i]))});
+ pre.gain.value=dbToGain(vol);
+}
+async function start(){
+ showErr("");
+ if(!$("hp").checked){showErr("Confirma que llevas auriculares marcando la casilla. Sin ellos se produciría un pitido.");return}
+ if(!navigator.mediaDevices?.getUserMedia){showErr("Este navegador no permite usar el micrófono. Abre la página con HTTPS en Chrome, Safari, Edge o Firefox actualizados.");return}
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1,latency:0}});
+ }catch(e){showErr("No tengo permiso para usar el micrófono. Actívalo en los ajustes del navegador y vuelve a pulsar ESCUCHAR.");return}
+ ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:"interactive"});
+ await ctx.resume();
+ src=ctx.createMediaStreamSource(stream);
+ pre=ctx.createGain();
+ filters=BANDS.map(f=>{const n=ctx.createBiquadFilter();n.type="peaking";n.frequency.value=f;n.Q.value=1.1;return n});
+ comp=ctx.createDynamicsCompressor();
+ comp.threshold.value=-28;comp.knee.value=20;comp.ratio.value=4;comp.attack.value=0.003;comp.release.value=0.15;
+ limiter=ctx.createDynamicsCompressor();
+ limiter.threshold.value=-6;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=0.001;limiter.release.value=0.05;
+ out=ctx.createGain();out.gain.value=0.9;
+ analyser=ctx.createAnalyser();analyser.fftSize=512;
+ let node=src;[pre,...filters,comp,limiter,out].forEach(n=>{node.connect(n);node=n});
+ out.connect(ctx.destination);out.connect(analyser);
+ apply();running=true;
+ const b=$("main");b.textContent="PARAR";b.classList.add("on");b.setAttribute("aria-label","Parar");
+ $("meterBox").classList.remove("hidden");
+ const buf=new Float32Array(analyser.fftSize);
+ (function loop(){if(!running)return;analyser.getFloatTimeDomainData(buf);let s=0;for(const v of buf)s+=v*v;
+  const r=Math.sqrt(s/buf.length);$("meter").style.width=Math.min(100,Math.max(0,(20*Math.log10(Math.max(r,1e-5))+60)/60*100))+"%";
+  raf=requestAnimationFrame(loop)})();
+ stream.getAudioTracks()[0].onended=stop;
+ try{if("wakeLock"in navigator)navigator.wakeLock.request("screen").then(l=>wl=l)}catch{}
+}
+let wl=null;
+function stop(){
+ running=false;cancelAnimationFrame(raf);
+ try{stream?.getTracks().forEach(t=>t.stop())}catch{}
+ try{ctx?.close()}catch{}
+ filters=[];wl?.release?.();wl=null;
+ const b=$("main");b.textContent="ESCUCHAR";b.classList.remove("on");b.setAttribute("aria-label","Empezar a escuchar");
+ $("meterBox").classList.add("hidden");$("meter").style.width="0";
+}
+$("main").onclick=()=>running?stop():start();
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&running){showErr("El audio se ha parado porque la app pasó a segundo plano. Vuelve a pulsar ESCUCHAR.");stop()}else if(!document.hidden&&wl===null&&running&&"wakeLock"in navigator){navigator.wakeLock.request("screen").then(l=>wl=l).catch(()=>{})}});
+navigator.mediaDevices?.addEventListener?.("devicechange",()=>{if(running){showErr("Ha cambiado el dispositivo de audio. Por seguridad se ha parado.");stop()}});
+
+/* ---------- Test de audición ---------- */
+const ORDER=[1000,2000,4000,8000,500,250],MINDB=-75,MAXDB=-10,STEP=3,REF=-60;
+let tctx,osc,tg,heardFlag=false,cancelled=false;
+function showTest(on){$("app").style.display=on?"none":"";$("test").style.display=on?"grid":"none"}
+$("startTest").onclick=()=>{stop();$("testIntro").classList.remove("hidden");$("testRun").style.display="none";$("testDone").classList.add("hidden");showTest(true)};
+$("backTest").onclick=()=>{cancelled=true;endTone();showTest(false)};
+function endTone(){try{osc?.stop();tctx?.close()}catch{}tctx=null}
+$("heard").onclick=()=>{heardFlag=true};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+$("beginTest").onclick=async()=>{
+ cancelled=false;
+ tctx=new (window.AudioContext||window.webkitAudioContext)();await tctx.resume();
+ osc=tctx.createOscillator();tg=tctx.createGain();tg.gain.value=0;
+ osc.connect(tg);tg.connect(tctx.destination);osc.start();
+ $("testIntro").classList.add("hidden");$("testRun").style.display="grid";
+ const th={};
+ for(let i=0;i<ORDER.length&&!cancelled;i++){
+  const f=ORDER[i];osc.frequency.value=f;heardFlag=false;
+  $("testStep").textContent=`Tono ${i+1} de ${ORDER.length}`;$("testHz").textContent=f+" Hz";
+  tg.gain.setTargetAtTime(0,tctx.currentTime,0.02);await sleep(800);
+  let lvl=MINDB;
+  while(lvl<=MAXDB&&!heardFlag&&!cancelled){
+   tg.gain.setTargetAtTime(dbToGain(lvl),tctx.currentTime,0.03);
+   $("testBar").style.width=((lvl-MINDB)/(MAXDB-MINDB)*100)+"%";
+   for(let k=0;k<24&&!heardFlag&&!cancelled;k++)await sleep(50);
+   if(!heardFlag)lvl+=STEP;
+  }
+  th[f]=Math.min(lvl,MAXDB);
+ }
+ endTone();
+ if(cancelled)return;
+ profile=BANDS.map(f=>Math.max(0,Math.min(18,((th[f]??REF)-REF)*0.5)));
+ store.set("profile",profile);
+ $("testRun").style.display="none";$("testDone").classList.remove("hidden");
+};
+
+/* ---------- PWA ---------- */
+let deferred;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;$("install").classList.remove("hidden")});
+$("install").onclick=async()=>{if(deferred){deferred.prompt();deferred=null;$("install").classList.add("hidden")}};
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+drawModes();drawVol();
+</script>
+</body>
+</html>
